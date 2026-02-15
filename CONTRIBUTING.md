@@ -127,4 +127,4 @@ Damit dein Beitrag gemerged wird:
 
 ## Fragen?
 
-Stell sie in unserem [Discord](https://discord.gg/TODO) im `#hilfe` Channel oder erstelle ein [Issue](https://github.com/Claude-Code-Meetup-Munich/community-resources/issues).
+Stell sie in unserem [Discord](https://discord.gg/wmCnKzVdHE) im `#hilfe` Channel oder erstelle ein [Issue](https://github.com/Claude-Code-Meetup-Munich/community-resources/issues).

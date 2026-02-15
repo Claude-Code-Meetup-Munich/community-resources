@@ -2,7 +2,7 @@
 
 > Gesammelte Skills, Agents, CLAUDE.md-Beispiele, Prompts und Tools aus unserer Community.
 
-**Meetup:** [Claude Code Munich](https://luma.com/dc9v2zbl) · **Discord:** [Einladungslink](https://discord.gg/TODO) · **Website:** [claude-code-munich.de](https://claude-code-munich.de)
+**Meetup:** [Claude Code Munich](https://luma.com/dc9v2zbl) · **Discord:** [Einladungslink](https://discord.gg/wmCnKzVdHE) · **Website:** [claude-code-munich.de](https://claude-code-munich.de)
 
 ---
 
