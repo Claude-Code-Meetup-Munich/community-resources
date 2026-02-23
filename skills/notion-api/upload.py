@@ -6,7 +6,7 @@ H1 (toggle) > H2 (toggle) > H3 (toggle) > Content.
 First H1 is removed (page title). All others become toggle headings.
 
 Usage:
-    uv run upload.py <markdown_file> <page_id> [title] [--link-map key=id,...]
+    uv run upload.py <markdown_file> <page_id> [title]
     uv run upload.py --config <dotted.path> <markdown_file> [title]
 
 Config mode reads the page ID from .claude/config/notion.json.
@@ -23,19 +23,21 @@ import urllib.error
 # ── Config ────────────────────────────────────────────────────────
 
 def load_config():
-    """Load .notion-config.json, searching upward from CWD.
-    If not found, interactively prompt user to create it in CWD.
+    """Load Notion config, searching upward from CWD.
+    Checks .notion-config.json (legacy) and .claude/config/notion.json.
+    If not found, interactively creates .claude/config/notion.json.
     """
     d = os.getcwd()
     search_dir = d
     while True:
-        cfg = os.path.join(search_dir, ".notion-config.json")
+        # Canonical path
+        cfg = os.path.join(search_dir, ".claude", "config", "notion.json")
         if os.path.exists(cfg):
             with open(cfg) as f:
                 return json.load(f)
-        
-        # Legacy/Fallback: Check .claude/config/notion.json in current path
-        cfg_legacy = os.path.join(search_dir, ".claude", "config", "notion.json")
+
+        # Legacy path (kept for backward compat)
+        cfg_legacy = os.path.join(search_dir, ".notion-config.json")
         if os.path.exists(cfg_legacy):
             with open(cfg_legacy) as f:
                 return json.load(f)
@@ -54,7 +56,7 @@ def load_config():
 
     # Interactive Setup
     print("\n[!] Notion configuration not found.")
-    print("    Let's set up your .notion-config.json now.\n")
+    print("    Let's set up your .claude/config/notion.json now.\n")
     
     token = input("Enter your Notion Integration Token (secret_...): ").strip()
     if not token:
@@ -76,11 +78,14 @@ def load_config():
         }
     }
     
-    target_cfg = os.path.join(d, ".notion-config.json")
+    cfg_dir = os.path.join(d, ".claude", "config")
+    os.makedirs(cfg_dir, exist_ok=True)
+    target_cfg = os.path.join(cfg_dir, "notion.json")
     with open(target_cfg, "w") as f:
         json.dump(config_data, f, indent=2)
-        
+
     print(f"\n[+] Configuration saved to {target_cfg}")
+    print(f"    Add .claude/config/notion.json to your .gitignore!")
     return config_data
 
 
@@ -95,15 +100,23 @@ def resolve_config_path(config, path):
     return obj
 
 
-CONFIG = load_config()
-TOKEN = CONFIG["token"]
+# Module level — no interactive side effects at import time
+CONFIG = TOKEN = HEADERS = BASE = None
 API_VERSION = "2025-09-03"
-HEADERS = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Content-Type": "application/json",
-    "Notion-Version": API_VERSION,
-}
-BASE = "https://api.notion.com/v1"
+
+
+def _ensure_init():
+    global CONFIG, TOKEN, HEADERS, BASE
+    if CONFIG is not None:
+        return
+    CONFIG = load_config()
+    TOKEN = CONFIG.get("token", "")
+    HEADERS = {
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type": "application/json",
+        "Notion-Version": API_VERSION,
+    }
+    BASE = "https://api.notion.com/v1"
 
 
 # ── Rich Text ──────────────────────────────────────────────────────
@@ -180,7 +193,6 @@ def mk_code(content, language="plain text"):
     # Notion limits rich_text content to 2000 chars measured by JSON-encoded length.
     # Non-ASCII chars (e.g. ═, ä, 🟡) expand to \uXXXX in JSON (6 chars → 1 Python char).
     # We chunk conservatively: accumulate chars until the JSON-encoded chunk would exceed 1990.
-    import json as _json
     limit = 1990
     chunks = []
     start = 0
@@ -189,7 +201,7 @@ def mk_code(content, language="plain text"):
         lo, hi = start, min(start + limit, len(content))
         while lo < hi:
             mid = (lo + hi + 1) // 2
-            if len(_json.dumps(content[start:mid])) - 2 <= limit:  # -2 for surrounding quotes
+            if len(json.dumps(content[start:mid])) - 2 <= limit:  # -2 for surrounding quotes
                 lo = mid
             else:
                 hi = mid - 1
@@ -516,6 +528,7 @@ def parse_markdown(lines, link_map=None):
 # ── API ────────────────────────────────────────────────────────────
 
 def api_call(method, path, data=None):
+    _ensure_init()
     url = BASE + path
     body = json.dumps(data).encode() if data else None
     req = urllib.request.Request(url, data=body, headers=HEADERS, method=method)
@@ -530,20 +543,13 @@ def api_call(method, path, data=None):
 
 def clear_page(page_id):
     """Delete all blocks from a page, keeping child_page and child_database."""
-    result = api_call("GET", f"/blocks/{page_id}/children?page_size=100")
-    blocks = result.get("results", [])
     deleted = skipped = 0
-    for block in blocks:
-        if block.get("type") in ("child_page", "child_database"):
-            skipped += 1
-            continue
-        try:
-            api_call("DELETE", f"/blocks/{block['id']}")
-            deleted += 1
-        except:
-            pass
-    while result.get("has_more"):
-        result = api_call("GET", f"/blocks/{page_id}/children?page_size=100&start_cursor={result['next_cursor']}")
+    start_cursor = None
+    while True:
+        url = f"/blocks/{page_id}/children?page_size=100"
+        if start_cursor:
+            url += f"&start_cursor={start_cursor}"
+        result = api_call("GET", url)
         for block in result.get("results", []):
             if block.get("type") in ("child_page", "child_database"):
                 skipped += 1
@@ -551,8 +557,11 @@ def clear_page(page_id):
             try:
                 api_call("DELETE", f"/blocks/{block['id']}")
                 deleted += 1
-            except:
+            except Exception:
                 pass
+        if not result.get("has_more"):
+            break
+        start_cursor = result["next_cursor"]
     print(f"  Cleared {deleted} blocks (kept {skipped} child pages)")
 
 
@@ -624,6 +633,7 @@ if __name__ == "__main__":
         ci = args.index("--config")
         config_path = args[ci + 1]
         remaining = args[:ci] + args[ci + 2:]
+        _ensure_init()
         page_id = resolve_config_path(CONFIG, config_path)
         filepath = remaining[0]
         title = remaining[1] if len(remaining) > 1 else "Untitled"

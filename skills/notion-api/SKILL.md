@@ -23,6 +23,8 @@ Config-Datei: `.claude/config/notion.json` (Standard-Pfad in jedem Projekt).
 }
 ```
 
+> ⚠️ Add `.claude/config/notion.json` to your `.gitignore` — it contains your integration token.
+
 ## Authentifizierung
 
 - **API Token:** Wird aus `.claude/config/notion.json` gelesen.

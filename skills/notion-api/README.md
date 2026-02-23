@@ -28,6 +28,8 @@ Config anlegen (`.claude/config/notion.json`):
 }
 ```
 
+> ⚠️ Add `.claude/config/notion.json` to your `.gitignore` — it contains your integration token.
+
 Token: **notion.so → Settings → Connections → Develop or manage integrations**
 
 ## Nutzung
