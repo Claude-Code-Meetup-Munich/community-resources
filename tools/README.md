@@ -7,6 +7,7 @@ MCP Server Konfigurationen, Scripts und Guides für Claude Code.
 | Tool | Beschreibung |
 |------|-------------|
 | [discord-mcp-setup.md](./discord-mcp-setup.md) | Discord-Server über Claude Code verwalten |
+| [miro-mcp-setup.md](./miro-mcp-setup.md) | Miro-Boards mit Claude Code steuern (inoffiziell, 89 Tools) |
 
 ## Was sind MCP Server?
 
