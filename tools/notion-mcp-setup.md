@@ -52,9 +52,9 @@ Der MCP-Server ist ideal für **lesende und einfache schreibende Operationen**. 
 | Einzelnen Block gezielt updaten | ⚠️ überschreibt alles | ✅ atomares Update |
 | Kommentare lesen & beantworten | ⚠️ eingeschränkt | ✅ |
 | Lange Pages mit vielen Blöcken bearbeiten | ⚠️ ineffizient | ✅ |
-| Markdown-Dokument in Notion pushen | ❌ | ✅ via `upload.py` |
+| Markdown-Dokument in Notion pushen | ❌ | ✅ via Notion REST API |
 
-Der `/notion-api` Skill nutzt die REST API direkt via curl — mehr Kontrolle, kein MCP nötig.
+Der `/notion-api` Skill nutzt die offizielle Notion REST API direkt — mehr Kontrolle, kein MCP nötig.
 
 ## Links
 
